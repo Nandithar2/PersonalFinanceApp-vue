@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 
 type Transaction = {
   amount: number;
@@ -13,33 +13,52 @@ const date = ref<string>('');
 const category = ref<string>('');
 
 const getTransactions = async () => {
-  const response = await fetch('/transactions', { method: 'GET' });
-  transactions.value = await response.json();
+  try {
+    const response = await fetch('/transactions', { method: 'GET' });
+    transactions.value = await response.json();
+  } catch (error) {
+    console.error('Failed to fetch transactions:', error);
+  }
 };
 
 const addTransaction = async () => {
-  const res = await fetch('/transactions', {
-    method: 'POST',
-    body: JSON.stringify({ amount: amount.value, date: date.value, category: category.value }),
-  });
-  const newTransaction = await res.json();
-  transactions.value.push(newTransaction);
+  try {
+    const res = await fetch('/transactions', {
+      method: 'POST',
+      body: JSON.stringify({
+        amount: amount.value,
+        date: date.value,
+        category: category.value,
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    const newTransaction = await res.json();
+    transactions.value.push(newTransaction);
+    resetForm();
+  } catch (error) {
+    console.error('Failed to add transaction:', error);
+  }
+};
+
+const resetForm = () => {
   amount.value = 0;
   date.value = '';
   category.value = '';
 };
 
 const cumulative = (index: number) => {
-  return transactions.value.slice(0, index + 1).reduce((sum, transaction) => sum + transaction.amount, 0);
+  return transactions.value
+    .slice(0, index + 1)
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
 };
 
-onMounted(() => {
-  getTransactions();
-});
+onMounted(getTransactions);
 </script>
 
 <template>
-   <main>
+  <main>
     <form id="transaction-form" @submit.prevent="addTransaction">
       <input v-model.number="amount" type="number" name="amount" placeholder="amount" required>
       <input v-model="date" type="date" name="date" placeholder="date" required>
@@ -63,7 +82,7 @@ onMounted(() => {
         <option>Shopping</option>
         <option>Travel</option>
       </select>
-      <button type="submit">add transaction</button>
+      <button type="submit">Add transaction</button>
     </form>
 
     <h1>Transactions</h1>
@@ -90,5 +109,4 @@ onMounted(() => {
 </template>
 
 <style>
-
 </style>
